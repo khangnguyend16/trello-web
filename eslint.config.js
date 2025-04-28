@@ -28,7 +28,13 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
-      'react/display-name': 0
+      'react/display-name': 0,
+      "no-restricted-imports": [
+        "error",
+        {
+          "patterns": ["@mui/*/*/*"]
+        }
+      ]
     },
   },
 ]

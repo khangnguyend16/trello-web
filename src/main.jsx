@@ -1,10 +1,16 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
 import App from './App.jsx'
+import CssBaseline from '@mui/material/CssBaseline';
+import { Experimental_CssVarsProvider as CssVarsProvider } from '@mui/material/styles';
+import theme from './theme';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <CssVarsProvider  theme={theme}>
+      {/* chuẩn hóa CSS để loại bỏ sự khác biệt về kiểu dáng giữa các trình duyệt. */}
+      <CssBaseline />  
+      <App />
+    </CssVarsProvider>
   </StrictMode>,
 )
