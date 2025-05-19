@@ -8,14 +8,22 @@ import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortabl
 import { useState } from "react";
 import TextField from "@mui/material/TextField";
 import CloseIcon from "@mui/icons-material/Close";
+import { createNewColumnAPI } from "~/apis";
+import { generatePlaceholderCard } from "~/utils/formatters";
+import { updateCurrentActiveBoard, selectCurrentActiveBoard } from "~/redux/activeBoard/activeBoardSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { cloneDeep } from "lodash";
 
-function ListColumns({ columns, createNewColumn, createNewCard, deleteColumnDetails }) {
+function ListColumns({ columns }) {
+  const dispatch = useDispatch();
+  const board = useSelector(selectCurrentActiveBoard);
+
   const [openNewColumnForm, setOpenNewColumnForm] = useState(false);
   const toggleOpenNewColumnForm = () => setOpenNewColumnForm(!openNewColumnForm);
 
   const [newColumnTitle, setNewColumnTitle] = useState("");
 
-  const addNewColumn = () => {
+  const addNewColumn = async () => {
     if (!newColumnTitle) {
       toast.error("Please enter Column Title!");
       return;
@@ -24,8 +32,25 @@ function ListColumns({ columns, createNewColumn, createNewCard, deleteColumnDeta
     const newColumnData = {
       title: newColumnTitle,
     };
-    // Gọi API ở đây...
-    createNewColumn(newColumnData);
+
+    // gọi API tạo mới Column và làm lại dữ liệu State Board
+    const createdColumn = await createNewColumnAPI({
+      ...newColumnData,
+      boardId: board._id,
+    });
+
+    // Khi tạo column mới thì sẽ chưa có card -> xử lý vấn đề kéo thả vào 1 column rỗng
+    createdColumn.cards = [generatePlaceholderCard(createdColumn)];
+    createdColumn.cardOrderIds = [generatePlaceholderCard(createdColumn)._id];
+
+    // Cập nhật state board (BE có thể hỗ trợ trả về luôn toàn bộ Board => FE sẽ nhàn hơn)
+    // const newBoard = { ...board };
+    const newBoard = cloneDeep(board);
+    newBoard.columns.push(createdColumn);
+    newBoard.columnOrderIds.push(createdColumn._id);
+
+    // Cập nhật dữ liệu Board vào trong redux store
+    dispatch(updateCurrentActiveBoard(newBoard));
 
     // Đóng trạng thái thêm Column mới & Clear Input
     toggleOpenNewColumnForm();
@@ -46,7 +71,7 @@ function ListColumns({ columns, createNewColumn, createNewCard, deleteColumnDeta
         }}
       >
         {columns?.map((column) => (
-          <Column key={column._id} column={column} createNewCard={createNewCard} deleteColumnDetails={deleteColumnDetails} />
+          <Column key={column._id} column={column} />
         ))}
 
         {/*Box Add new column */}
@@ -111,6 +136,7 @@ function ListColumns({ columns, createNewColumn, createNewCard, deleteColumnDeta
             />
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Button
+                className="interceptor-loading"
                 onClick={addNewColumn}
                 variant="contained"
                 color="success"

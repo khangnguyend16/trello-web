@@ -24,8 +24,15 @@ import { useState } from "react";
 import TextField from "@mui/material/TextField";
 import CloseIcon from "@mui/icons-material/Close";
 import { useConfirm } from "material-ui-confirm";
+import { createNewCardAPI, deleteColumnDetailsAPI } from "~/apis";
+import { updateCurrentActiveBoard, selectCurrentActiveBoard } from "~/redux/activeBoard/activeBoardSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { cloneDeep } from "lodash";
 
-function Column({ column, createNewCard, deleteColumnDetails }) {
+function Column({ column }) {
+  const dispatch = useDispatch();
+  const board = useSelector(selectCurrentActiveBoard);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: column._id,
     data: { ...column },
@@ -51,7 +58,7 @@ function Column({ column, createNewCard, deleteColumnDetails }) {
 
   const [newCardTitle, setNewCardTitle] = useState("");
 
-  const addNewCard = () => {
+  const addNewCard = async () => {
     if (!newCardTitle) {
       toast.error("Please enter Card Title!", { position: "bottom-right" });
       return;
@@ -62,9 +69,29 @@ function Column({ column, createNewCard, deleteColumnDetails }) {
       columnId: column._id,
     };
 
-    // Gọi API ở đây
-    createNewCard(newCardData);
+    // gọi API tạo mới Card và làm lại dữ liệu State Board
+    const createdCard = await createNewCardAPI({
+      ...newCardData,
+      boardId: board._id,
+    });
 
+    // Cập nhật state board
+    const newBoard = cloneDeep(board);
+    const columnToUpdate = newBoard.columns.find((column) => column._id === createdCard.columnId);
+    if (columnToUpdate) {
+      // Nếu column rỗng (đang chứa 1 placeholder card)
+      if (columnToUpdate.cards.some((card) => card.FE_PlaceholderCard)) {
+        columnToUpdate.cards = [createdCard];
+        columnToUpdate.cardOrderIds = [createdCard._id];
+      } else {
+        // Ngược lại column đã có data thì push vào cuối mảng
+        columnToUpdate.cards.push(createdCard);
+        columnToUpdate.cardOrderIds.push(createdCard._id);
+      }
+    }
+    console.log(columnToUpdate);
+    // setBoard(newBoard);
+    dispatch(updateCurrentActiveBoard(newBoard));
     // Đóng trạng thái thêm Card mới & Clear Input
     toggleOpenNewCardForm();
     setNewCardTitle("");
@@ -90,7 +117,16 @@ function Column({ column, createNewCard, deleteColumnDetails }) {
     });
 
     if (confirmed) {
-      deleteColumnDetails(column._id);
+      // Update chuẩn dữ liệu state board
+      const newBoard = { ...board };
+      newBoard.columns = newBoard.columns.filter((c) => c._id !== column._id);
+      newBoard.columnOrderIds = newBoard.columns.filter((_id) => _id !== column._id);
+      // setBoard(newBoard);
+      dispatch(updateCurrentActiveBoard(newBoard));
+      // Gọi API
+      deleteColumnDetailsAPI(column._id).then((res) => {
+        toast.success(res?.deleteResult);
+      });
     }
 
     console.log(reason);
@@ -272,6 +308,7 @@ function Column({ column, createNewCard, deleteColumnDetails }) {
               />
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Button
+                  className="interceptor-loading"
                   onClick={addNewCard}
                   variant="contained"
                   color="success"
