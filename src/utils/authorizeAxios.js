@@ -1,6 +1,14 @@
 import axios from "axios";
 import { toast } from "react-toastify";
 import { interceptorLoadingElements } from "~/utils/formatters";
+import { refreshTokenAPI } from "~/apis";
+import { logoutUserAPI } from "~/redux/user/userSlice";
+
+// Inject store
+let axiosReduxStore;
+export const injectStore = (mainStore) => {
+  axiosReduxStore = mainStore;
+};
 
 // Khởi tạo 1 đối tượng Axios (authorizedAxiosInstance) mục đích để custom và cấu hình chung cho dự án
 let authorizedAxiosInstance = axios.create();
@@ -28,6 +36,10 @@ authorizedAxiosInstance.interceptors.request.use(
   }
 );
 
+// Khởi tạo 1 promise cho việc gọi api refresh_token
+// Mục đích tạo promise này để khi nào gọi api refresh_token xong thì mới retry lại nhiều api bị lỗi trước đó
+let refreshTokenPromise = null;
+
 // Interceptor Response: Can thiệp vào giữa những reponse nhận về
 authorizedAxiosInstance.interceptors.response.use(
   (response) => {
@@ -43,6 +55,41 @@ authorizedAxiosInstance.interceptors.response.use(
 
     // Kỹ thuật chặn spam click
     interceptorLoadingElements(false);
+
+    // Trường hợp 1: Nếu như nhận 401 từ BE, gọi api đăng xuất
+    if (error.response?.status === 401) {
+      axiosReduxStore.dispatch(logoutUserAPI(false));
+    }
+
+    // Trường hợp 2: Nếu nhận mã 410 từ BE, thì sẽ gọi api refresh token để làm mới lại accessToken
+    // Đầu tiên lấy dc các request API đang bị lỗi thông qua error.config
+    const originalRequests = error.config;
+    console.log("originalRequests: ", originalRequests);
+    if (error.response?.status === 410 && !originalRequests._retry) {
+      originalRequests._retry = true;
+
+      if (!refreshTokenPromise) {
+        refreshTokenPromise = refreshTokenAPI()
+          .then((data) => {
+            // đồng thời accessToken đã nằm trong httpOnly cookie (xử lý phía BE)
+            return data?.accessToken;
+          })
+          .catch((_error) => {
+            // Nếu nhận bất kỳ lỗi nào từ api refresh token -> logout luôn
+            axiosReduxStore.dispatch(logoutUserAPI(false));
+            return Promise.reject(_error);
+          })
+          .finally(() => {
+            // Dù API có ok hay lỗi thì vẫn luôn gán lại refreshTokenPromise về null như ban đầu
+            refreshTokenPromise = null;
+          });
+      }
+
+      // eslint-disable-next-line no-unused-vars
+      return refreshTokenPromise.then((accessToken) => {
+        return authorizedAxiosInstance(originalRequests);
+      });
+    }
 
     // Xử lý tập trung phần hiển thị thông báo lỗi trả về từ mọi API ở đây
     let errorMessage = error?.message;
