@@ -9,6 +9,7 @@ import { fetchBoardDetailsAPI, updateCurrentActiveBoard, selectCurrentActiveBoar
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import PageLoadingSpinner from "~/components/Loading/PageLoadingSpinner";
+import ActiveCard from "~/components/Modal/ActiveCard/ActiveCard";
 
 // import { mockData } from "~/apis/mock-data";
 
@@ -88,6 +89,7 @@ function Board() {
 
   return (
     <Container disableGutters maxWidth="false" sx={{ height: "100vh" }}>
+      <ActiveCard />
       <AppBar />
       <BoardBar board={board} />
       <BoardContent

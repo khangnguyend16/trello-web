@@ -6,6 +6,8 @@ import Auth from "./pages/Auth/Auth";
 import AccountVerification from "~/pages/Auth/AccountVerification";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "~/redux/user/userSlice";
+import Settings from "~/pages/Settings/Settings";
+import Boards from "~/pages/Boards/index";
 
 const ProtectedRoute = ({ user }) => {
   if (!user) return <Navigate to="/login" replace={true} />;
@@ -21,7 +23,7 @@ function App() {
         path="/"
         element={
           // replace giá trị true để nó thay thế route /, route / sẽ ko còn nằm trong history của Browser
-          <Navigate to="/boards/681e1d81c89fbb2a1b980d82" replace={true} />
+          <Navigate to="/boards" replace={true} />
         }
       />
 
@@ -29,6 +31,11 @@ function App() {
       <Route element={<ProtectedRoute user={currentUser} />}>
         {/* Board Details */}
         <Route path="/boards/:boardId" element={<Board />} />
+        <Route path="/boards" element={<Boards />} />
+
+        {/**User Settings */}
+        <Route path="/settings/account" element={<Settings />} />
+        <Route path="/settings/security" element={<Settings />} />
       </Route>
 
       {/* Authentication */}

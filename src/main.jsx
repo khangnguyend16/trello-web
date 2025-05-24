@@ -2,6 +2,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import CssBaseline from "@mui/material/CssBaseline";
+import GlobalStyles from "@mui/material/GlobalStyles";
 import { Experimental_CssVarsProvider as CssVarsProvider } from "@mui/material/styles";
 import theme from "./theme";
 import { ToastContainer } from "react-toastify";
@@ -24,9 +25,9 @@ import { injectStore } from "./utils/authorizeAxios.js";
 injectStore(store);
 
 createRoot(document.getElementById("root")).render(
-  <BrowserRouter basename="/">
-    <Provider store={store}>
-      <PersistGate persistor={persistor}>
+  <Provider store={store}>
+    <PersistGate persistor={persistor}>
+      <BrowserRouter basename="/">
         <CssVarsProvider theme={theme}>
           <ConfirmProvider
             defaultOptions={{
@@ -37,13 +38,14 @@ createRoot(document.getElementById("root")).render(
               cancellationButtonProps: { color: "inherit" },
             }}
           >
+            <GlobalStyles styles={{ a: { textDecoration: "none" } }} />
             {/* chuẩn hóa CSS để loại bỏ sự khác biệt về kiểu dáng giữa các trình duyệt. */}
             <CssBaseline />
             <App />
             <ToastContainer position="bottom-left" theme="colored" />
           </ConfirmProvider>
         </CssVarsProvider>
-      </PersistGate>
-    </Provider>
-  </BrowserRouter>
+      </BrowserRouter>
+    </PersistGate>
+  </Provider>
 );
